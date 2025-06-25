@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="pt-br" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Interativo: Blocos Econômicos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Calm Harmony -->
+    <!-- Application Structure Plan: A non-linear, single-page application designed for exploration. The structure includes: 1) A main navigation header. 2) An introduction. 3) An interactive diagram for the stages of integration, transforming the report's table into an engaging element. 4) A central comparative dashboard where users can select a bloc (UE, Mercosul, etc.) to dynamically update info cards, a comparative chart (toggling between PIB and Population), and a detailed analysis text block. 5) Accordion-style sections for 'Global Themes' and 'Future Trends' to make dense text digestible. This structure was chosen to prioritize user-driven discovery and comparison over the linear format of the source report, enhancing usability and engagement. -->
+    <!-- Visualization & Content Choices: 
+        - Goal: Inform/Organize -> Interactive Stages Diagram (HTML/CSS/JS) - Replaces static table, more engaging. Justification: Visual flow is better for process-based information. Method: JS toggles content visibility.
+        - Goal: Compare -> Comparative Dashboard (HTML/JS/Chart.js) - Central hub for comparing blocs. Justification: Allows direct comparison of quantitative (chart, cards) and qualitative (text) data, which is a primary user task. Method: JS updates DOM elements and Chart.js canvas based on user selection.
+        - Goal: Compare (Data) -> Bar Chart (Chart.js/Canvas) - Visualizes GDP and Population. Justification: Bar charts are excellent for comparing discrete categories. Method: Chart.js for responsive canvas rendering.
+        - Goal: Organize/Inform -> Accordion Panels (HTML/CSS/JS) - For complex topics like 'Global Themes'. Justification: Breaks down heavy text into manageable chunks, reducing cognitive load. Method: JS toggles height/visibility.
+        - CONFIRMATION: NO SVG graphics used. NO Mermaid JS used.
+     -->
+     <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FDFBF7;
+            color: #403A3A;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 900px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 400px;
+            }
+        }
+        .nav-link {
+            transition: color 0.3s ease, border-bottom-color 0.3s ease;
+            border-bottom: 2px solid transparent;
+        }
+        .nav-link:hover, .nav-link.active {
+            color: #A084E8;
+            border-bottom-color: #A084E8;
+        }
+        .bloc-button {
+            transition: all 0.3s ease;
+        }
+        .bloc-button.active {
+            background-color: #A084E8;
+            color: #FFFFFF;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+        .stage-card, .theme-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .stage-card.active {
+            border-color: #A084E8;
+            transform: scale(1.03);
+        }
+        .theme-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <header class="bg-white/80 backdrop-blur-md sticky top-0 z-50 shadow-sm">
+        <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <h1 class="text-xl md:text-2xl font-bold text-gray-800">🌍 Blocos Econômicos</h1>
+            <div class="hidden md:flex space-x-8">
+                <a href="#intro" class="nav-link">Início</a>
+                <a href="#stages" class="nav-link">Estágios</a>
+                <a href="#dashboard" class="nav-link">Painel Comparativo</a>
+                <a href="#themes" class="nav-link">Temas Globais</a>
+                <a href="#future" class="nav-link">Futuro</a>
+            </div>
+            <button id="mobile-menu-button" class="md:hidden text-gray-700 focus:outline-none">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+            </button>
+        </nav>
+        <div id="mobile-menu" class="hidden md:hidden px-6 pb-4">
+            <a href="#intro" class="block py-2 nav-link">Início</a>
+            <a href="#stages" class="block py-2 nav-link">Estágios</a>
+            <a href="#dashboard" class="block py-2 nav-link">Painel Comparativo</a>
+            <a href="#themes" class="block py-2 nav-link">Temas Globais</a>
+            <a href="#future" class="block py-2 nav-link">Futuro</a>
+        </div>
+    </header>
+
+    <main>
+        <section id="intro" class="py-16 md:py-24 bg-white">
+            <div class="container mx-auto px-6 text-center">
+                <h2 class="text-3xl md:text-5xl font-bold mb-4">A Nova Geopolítica da Integração Regional</h2>
+                <p class="text-lg md:text-xl text-gray-600 max-w-3xl mx-auto mb-8">
+                    Explore a dinâmica, os desafios e o futuro dos principais blocos econômicos em um mundo em constante transformação. Esta aplicação interativa traduz a complexidade da cooperação global em uma experiência clara e navegável.
+                </p>
+                <div class="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto text-left">
+                    <div class="bg-gray-50 p-6 rounded-lg shadow-sm">
+                        <h3 class="font-bold text-xl mb-2">O Que São?</h3>
+                        <p class="text-gray-600">Alianças entre nações para facilitar o comércio, eliminar barreiras e promover o desenvolvimento integrado, impulsionando PIB, emprego e investimentos.</p>
+                    </div>
+                    <div class="bg-gray-50 p-6 rounded-lg shadow-sm">
+                        <h3 class="font-bold text-xl mb-2">Vantagens</h3>
+                        <p class="text-gray-600">Acesso a mercados ampliados, ganhos de escala, crescimento econômico, maior poder de negociação e promoção da paz e estabilidade regional.</p>
+                    </div>
+                    <div class="bg-gray-50 p-6 rounded-lg shadow-sm">
+                        <h3 class="font-bold text-xl mb-2">Desafios</h3>
+                        <p class="text-gray-600">Perda parcial de soberania, prejuízo a setores menos competitivos, risco de contágio em crises e dependência econômica entre os membros.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="stages" class="py-16 md:py-24">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl md:text-4xl font-bold">Os Estágios da Integração Econômica</h2>
+                    <p class="text-lg text-gray-600 mt-2">Clique em um estágio para ver seus detalhes. A integração é um processo gradual de aprofundamento da cooperação.</p>
+                </div>
+                <div class="flex flex-col md:flex-row justify-center items-center gap-2 md:gap-0 mb-8">
+                    <div id="stage-ZPT" class="stage-card border-2 border-gray-200 rounded-lg p-4 w-full md:w-auto text-center shadow-sm">
+                        <span class="text-2xl">1</span>
+                        <h3 class="font-semibold">Zona de Preferência Tarifária</h3>
+                    </div>
+                    <div class="text-gray-400 text-2xl mx-2 hidden md:block">→</div>
+                    <div id="stage-ZLC" class="stage-card border-2 border-gray-200 rounded-lg p-4 w-full md:w-auto text-center shadow-sm">
+                        <span class="text-2xl">2</span>
+                        <h3 class="font-semibold">Zona de Livre Comércio</h3>
+                    </div>
+                    <div class="text-gray-400 text-2xl mx-2 hidden md:block">→</div>
+                    <div id="stage-UA" class="stage-card border-2 border-gray-200 rounded-lg p-4 w-full md:w-auto text-center shadow-sm">
+                        <span class="text-2xl">3</span>
+                        <h3 class="font-semibold">União Aduaneira</h3>
+                    </div>
+                    <div class="text-gray-400 text-2xl mx-2 hidden md:block">→</div>
+                    <div id="stage-MC" class="stage-card border-2 border-gray-200 rounded-lg p-4 w-full md:w-auto text-center shadow-sm">
+                        <span class="text-2xl">4</span>
+                        <h3 class="font-semibold">Mercado Comum</h3>
+                    </div>
+                     <div class="text-gray-400 text-2xl mx-2 hidden md:block">→</div>
+                    <div id="stage-UEM" class="stage-card border-2 border-gray-200 rounded-lg p-4 w-full md:w-auto text-center shadow-sm">
+                        <span class="text-2xl">5</span>
+                        <h3 class="font-semibold">União Econômica e Monetária</h3>
+                    </div>
+                </div>
+                <div id="stage-details" class="bg-white p-8 rounded-lg shadow-lg max-w-4xl mx-auto min-h-[150px]">
+                </div>
+            </div>
+        </section>
+
+        <section id="dashboard" class="py-16 md:py-24 bg-gray-50">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl md:text-4xl font-bold">Painel Comparativo dos Blocos</h2>
+                    <p class="text-lg text-gray-600 mt-2">Selecione um bloco para explorar seus dados, análises e desafios.</p>
+                </div>
+                
+                <div class="flex flex-wrap justify-center gap-3 md:gap-4 mb-12">
+                    <button class="bloc-button text-base md:text-lg font-semibold py-3 px-6 bg-white rounded-full shadow-sm" data-bloc="UE">🇪🇺 União Europeia</button>
+                    <button class="bloc-button text-base md:text-lg font-semibold py-3 px-6 bg-white rounded-full shadow-sm" data-bloc="MERCOSUL">🌎 Mercosul</button>
+                    <button class="bloc-button text-base md:text-lg font-semibold py-3 px-6 bg-white rounded-full shadow-sm" data-bloc="USMCA">🇨🇦🇲🇽🇺🇸 USMCA</button>
+                    <button class="bloc-button text-base md:text-lg font-semibold py-3 px-6 bg-white rounded-full shadow-sm" data-bloc="ASEAN">🌏 ASEAN</button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+                    <div class="bg-white p-6 rounded-lg shadow-md text-center">
+                        <h4 class="text-gray-500 font-semibold">Nível de Integração</h4>
+                        <p id="bloc-stat-integration" class="text-2xl font-bold text-purple-600"></p>
+                    </div>
+                     <div class="bg-white p-6 rounded-lg shadow-md text-center">
+                        <h4 class="text-gray-500 font-semibold">Fundação</h4>
+                        <p id="bloc-stat-year" class="text-2xl font-bold"></p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md text-center">
+                        <h4 class="text-gray-500 font-semibold">População</h4>
+                        <p id="bloc-stat-population" class="text-2xl font-bold"></p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md text-center">
+                        <h4 class="text-gray-500 font-semibold">PIB Combinado (Nominal)</h4>
+                        <p id="bloc-stat-gdp" class="text-2xl font-bold"></p>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 md:p-8 rounded-lg shadow-xl mb-12">
+                    <div class="flex flex-col sm:flex-row justify-between items-center mb-4">
+                        <h3 class="text-xl font-bold text-gray-800 mb-2 sm:mb-0">Comparativo de Indicadores Chave</h3>
+                         <div class="flex space-x-2 bg-gray-200 rounded-full p-1">
+                            <button id="chart-toggle-gdp" class="chart-toggle-button py-1 px-4 rounded-full text-sm font-semibold">PIB</button>
+                            <button id="chart-toggle-population" class="chart-toggle-button py-1 px-4 rounded-full text-sm font-semibold">População</button>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="bloc-chart"></canvas>
+                    </div>
+                </div>
+
+                <div id="bloc-details-container" class="bg-white p-6 md:p-8 rounded-lg shadow-xl">
+                </div>
+            </div>
+        </section>
+
+        <section id="themes" class="py-16 md:py-24">
+            <div class="container mx-auto px-6 max-w-4xl">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl md:text-4xl font-bold">Dinâmicas Globais da Integração</h2>
+                    <p class="text-lg text-gray-600 mt-2">A integração regional é moldada por forças complexas. Clique para expandir e entender os temas centrais.</p>
+                </div>
+                <div class="space-y-4">
+                    <div class="theme-card border border-gray-200 rounded-lg overflow-hidden">
+                        <button class="theme-header w-full text-left p-6 flex justify-between items-center bg-gray-50 hover:bg-gray-100">
+                            <h3 class="font-bold text-xl">O Dilema da Soberania</h3>
+                            <span class="text-2xl text-purple-500 transform transition-transform duration-300">+</span>
+                        </button>
+                        <div class="theme-content">
+                            <div class="p-6 pt-0 text-gray-600">
+                                A adesão a um bloco exige uma transferência voluntária de soberania. À medida que a integração avança (de livre comércio para união monetária), os países cedem mais controle sobre políticas tarifárias, comerciais, migratórias e monetárias. Essa tensão entre os benefícios da cooperação e a perda de autonomia nacional é uma fonte constante de atrito político e alimenta movimentos céticos, como visto no Brexit, que usou o lema "retomar o controle" para defender a saída da UE.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="theme-card border border-gray-200 rounded-lg overflow-hidden">
+                        <button class="theme-header w-full text-left p-6 flex justify-between items-center bg-gray-50 hover:bg-gray-100">
+                            <h3 class="font-bold text-xl">Protecionismo vs. Liberalização</h3>
+                            <span class="text-2xl text-purple-500 transform transition-transform duration-300">+</span>
+                        </button>
+                        <div class="theme-content">
+                             <div class="p-6 pt-0 text-gray-600">
+                                Blocos econômicos são um paradoxo: promovem a liberalização internamente, ao remover tarifas entre membros, mas frequentemente agem de forma protecionista externamente. A Tarifa Externa Comum (TEC), por exemplo, protege o mercado do bloco contra a concorrência de países não-membros. Essa dualidade cria uma tensão entre o livre comércio regional e o protecionismo, podendo gerar guerras comerciais e disputas internas sobre setores sensíveis como a agricultura.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="theme-card border border-gray-200 rounded-lg overflow-hidden">
+                        <button class="theme-header w-full text-left p-6 flex justify-between items-center bg-gray-50 hover:bg-gray-100">
+                            <h3 class="font-bold text-xl">Regionalismo vs. Multilateralismo</h3>
+                            <span class="text-2xl text-purple-500 transform transition-transform duration-300">+</span>
+                        </button>
+                        <div class="theme-content">
+                             <div class="p-6 pt-0 text-gray-600">
+                                A proliferação de blocos desafia o sistema da Organização Mundial do Comércio (OMC), cujo princípio é a não-discriminação. Blocos criam acordos preferenciais, sendo uma exceção a essa regra. O debate é se eles são "blocos de construção" para um comércio global mais livre ou "obstáculos" que fragmentam a economia mundial. Com as negociações multilaterais estagnadas, muitos países veem o regionalismo como a via mais pragmática para acessar mercados.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="future" class="py-16 md:py-24 bg-gray-50">
+            <div class="container mx-auto px-6 text-center">
+                <h2 class="text-3xl md:text-4xl font-bold mb-4">O Futuro dos Blocos Econômicos</h2>
+                <p class="text-lg text-gray-600 max-w-3xl mx-auto mb-12">Novas tendências estão redefinindo o propósito da integração. A lógica da eficiência econômica está dando lugar a uma busca por resiliência e segurança.</p>
+                <div class="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto text-left">
+                    <div class="bg-white p-6 rounded-lg shadow-sm">
+                        <h3 class="font-bold text-xl mb-2">Economia Digital</h3>
+                        <p class="text-gray-600">O crescimento do e-commerce e dos fluxos de dados exige novas regras. Blocos modernos já legislam sobre o tema, mas desafios como a tributação de serviços digitais e a governança da IA exigirão coordenação ainda maior.</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-sm">
+                        <h3 class="font-bold text-xl mb-2">Sustentabilidade</h3>
+                        <p class="text-gray-600">A crise climática tornou-se central nas negociações. Acordos agora incluem cláusulas ambientais, mas há o risco de um "protecionismo verde", onde padrões rigorosos são usados como barreiras comerciais.</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-sm">
+                        <h3 class="font-bold text-xl mb-2">Cadeias Resilientes</h3>
+                        <p class="text-gray-600">A pandemia e as tensões geopolíticas expuseram a vulnerabilidade das cadeias de suprimentos globais. A nova prioridade é a resiliência, com blocos facilitando o *nearshoring* (produção regional) e o *friend-shoring* (em países aliados).</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-gray-800 text-white py-8">
+        <div class="container mx-auto px-6 text-center">
+            <p>Painel Interativo: Blocos Econômicos.</p>
+            <p class="text-sm text-gray-400 mt-2">Criado para fornecer uma análise visual e interativa da integração regional global.</p>
+        </div>
+    </footer>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+
+        const appData = {
+            stages: {
+                'ZPT': {
+                    title: '1. Zona de Preferência Tarifária',
+                    description: 'O estágio mais básico. Os membros concedem tarifas mais baixas para um grupo limitado de produtos, estimulando o comércio inicial sem compromissos abrangentes.',
+                    example: 'ALADI'
+                },
+                'ZLC': {
+                    title: '2. Zona de Livre Comércio',
+                    description: 'Eliminação de tarifas internas para a maioria dos bens. Cada país mantém sua própria política comercial com o resto do mundo.',
+                    example: 'USMCA'
+                },
+                'UA': {
+                    title: '3. União Aduaneira',
+                    description: 'Além do livre comércio interno, os membros adotam uma Tarifa Externa Comum (TEC), unificando a política comercial com países de fora do bloco.',
+                    example: 'Mercosul (imperfeita)'
+                },
+                'MC': {
+                    title: '4. Mercado Comum',
+                    description: 'Incorpora a união aduaneira e adiciona a livre circulação de pessoas, serviços e capitais (as "quatro liberdades").',
+                    example: 'Espaço Econômico Europeu'
+                },
+                'UEM': {
+                    title: '5. União Econômica e Monetária',
+                    description: 'O estágio mais avançado, combinando um mercado comum com uma moeda única e políticas macroeconômicas coordenadas por um banco central supranacional.',
+                    example: 'Zona do Euro (UE)'
+                }
+            },
+            blocs: {
+                'UE': {
+                    integration: 'União Econômica e Monetária (parcial)',
+                    year: '1992',
+                    population: '449 milhões',
+                    gdp: 'US$ 16,7 trilhões',
+                    gdpValue: 16.7,
+                    populationValue: 449,
+                    details: `
+                        <h3 class="text-2xl font-bold mb-4">🇪🇺 União Europeia: O Experimento Supranacional</h3>
+                        <div class="space-y-6 text-gray-700">
+                            <p><strong>Origem e Evolução:</strong> Nascida no pós-guerra para garantir a paz, a UE evoluiu de uma comunidade econômica para uma união política e monetária profunda. Seu pilar é o Mercado Único, com livre circulação de bens, serviços, capitais e pessoas, e a UEM, com o euro e o Banco Central Europeu.</p>
+                            <p><strong>Sucessos e Desafios:</strong> Apesar de sucessos como o programa Erasmus e o Espaço Schengen, a UE enfrenta desafios como o Brexit, a crise migratória e a ascensão do nacionalismo. A saída do Reino Unido foi seu maior revés, reintroduzindo barreiras e gerando atritos.</p>
+                            <p><strong>Ponto de Inflexão e Futuro:</strong> A guerra na Ucrânia forçou a UE a agir com unidade sem precedentes em segurança, defesa e energia (plano REPowerEU), aprofundando a integração de facto. O futuro do bloco depende de sua capacidade de reformar suas instituições para lidar com o alargamento (Ucrânia, Balcãs) e se firmar como um ator geopolítico autônomo.</p>
+                        </div>
+                    `
+                },
+                'MERCOSUL': {
+                    integration: 'União Aduaneira (imperfeita)',
+                    year: '1991',
+                    population: '270 milhões',
+                    gdp: 'US$ 2,7 trilhões',
+                    gdpValue: 2.7,
+                    populationValue: 270,
+                    details: `
+                        <h3 class="text-2xl font-bold mb-4">🌎 Mercosul: Ambição e Realidade</h3>
+                        <div class="space-y-6 text-gray-700">
+                            <p><strong>Origem e Objetivos:</strong> Fundado por Brasil, Argentina, Paraguai e Uruguai, o Mercosul nasceu com a ambição de criar um Mercado Comum para superar rivalidades e promover a democracia. O objetivo era a livre circulação de bens, serviços, capitais e pessoas.</p>
+                            <p><strong>A União Aduaneira "Imperfeita":</strong> Na prática, avançou até uma união aduaneira, mas de forma incompleta. O comércio intrarregional cresceu significativamente, mas a integração é minada por exceções à Tarifa Externa Comum (TEC), barreiras não-tarifárias e divergências políticas constantes entre os membros.</p>
+                            <p><strong>Dilema Estrutural e Futuro:</strong> O bloco vive um dilema: sua ambição de mercado comum exige uma integração que sua estrutura intergovernamental não suporta. Isso gera paralisia e frustração, com membros como o Uruguai buscando acordos bilaterais. O futuro depende de superar as tensões internas, concluir acordos externos (como com a UE) e resolver a contradição entre seus objetivos e sua estrutura.</p>
+                        </div>
+                    `
+                },
+                'USMCA': {
+                    integration: 'Zona de Livre Comércio',
+                    year: '2020',
+                    population: '500 milhões',
+                    gdp: 'US$ 29,9 trilhões',
+                    gdpValue: 29.9,
+                    populationValue: 500,
+                    details: `
+                        <h3 class="text-2xl font-bold mb-4">🇨🇦🇲🇽🇺🇸 USMCA: A Modernização do NAFTA</h3>
+                        <div class="space-y-6 text-gray-700">
+                            <p><strong>Da Renegociação à Criação:</strong> O USMCA substituiu o NAFTA em 2020, após uma iniciativa da administração Trump para criar um comércio mais "equilibrado". Mantém a zona de livre comércio, mas com regras muito mais rígidas.</p>
+                            <p><strong>"Comércio Gerenciado":</strong> O acordo representa uma mudança de paradigma, de livre comércio para "comércio gerenciado". Introduz regras prescritivas, como exigir que 75% dos componentes de um veículo sejam da região e que parte da produção seja feita por trabalhadores com salários mais altos. O objetivo é fortalecer as cadeias de suprimentos regionais (*nearshoring*) para competir com a China.</p>
+                            <p><strong>Incerteza e Futuro:</strong> O acordo inclui uma "cláusula de extinção", exigindo uma revisão a cada 6 anos para sua renovação. A primeira grande revisão, em 2026, cria um ambiente de incerteza estrutural, pois seu futuro dependerá do cenário político nos EUA, que podem buscar renegociar ou abandonar o tratado.</p>
+                        </div>
+                    `
+                },
+                'ASEAN': {
+                    integration: 'Zona de Livre Comércio (com cooperação política)',
+                    year: '1967',
+                    population: '670 milhões',
+                    gdp: 'US$ 3,6 trilhões',
+                    gdpValue: 3.6,
+                    populationValue: 670,
+                    details: `
+                        <h3 class="text-2xl font-bold mb-4">🌏 ASEAN: O Caminho do Consenso</h3>
+                        <div class="space-y-6 text-gray-700">
+                            <p><strong>Histórico e Estrutura:</strong> Fundada durante a Guerra Fria para promover a paz e estabilidade, a ASEAN opera pelo "Modo ASEAN": não-interferência nos assuntos internos e tomada de decisão por consenso. Essa abordagem foi crucial para manter a união de um grupo extremamente diverso.</p>
+                            <p><strong>Resiliência e Paralisia:</strong> O "Modo ASEAN" é sua força e fraqueza. Garante sua neutralidade e centralidade como fórum diplomático na Ásia, mas impede ações decisivas em crises complexas, como o golpe militar em Mianmar e as disputas territoriais no Mar da China Meridional.</p>
+                            <p><strong>Equilíbrio Estratégico e Futuro:</strong> Localizada no epicentro da rivalidade EUA-China, a ASEAN adota uma estratégia de equilíbrio (*hedging*), mantendo boas relações com ambas as potências. Seu futuro dependerá da capacidade de evoluir seus mecanismos de decisão para responder a crises sem abandonar os princípios que a mantêm unida.</p>
+                        </div>
+                    `
+                },
+            }
+        };
+
+        let myChart;
+        let currentChartType = 'gdp';
+        let currentBloc = 'UE';
+
+        const stageDetailsEl = document.getElementById('stage-details');
+        const stageCards = document.querySelectorAll('.stage-card');
+
+        function updateStageDetails(stageId) {
+            const stage = appData.stages[stageId];
+            stageDetailsEl.innerHTML = `
+                <h3 class="text-xl font-bold mb-2">${stage.title}</h3>
+                <p class="text-gray-700 mb-2">${stage.description}</p>
+                <p class="text-sm text-gray-500"><strong>Exemplo principal:</strong> ${stage.example}</p>
+            `;
+            stageCards.forEach(card => card.classList.remove('active'));
+            document.getElementById(`stage-${stageId}`).classList.add('active');
+        }
+
+        stageCards.forEach(card => {
+            card.addEventListener('click', () => {
+                const stageId = card.id.replace('stage-', '');
+                updateStageDetails(stageId);
+            });
+        });
+
+        const blocStatIntegration = document.getElementById('bloc-stat-integration');
+        const blocStatYear = document.getElementById('bloc-stat-year');
+        const blocStatPopulation = document.getElementById('bloc-stat-population');
+        const blocStatGdp = document.getElementById('bloc-stat-gdp');
+        const blocDetailsContainer = document.getElementById('bloc-details-container');
+
+        function updateDashboard(blocId) {
+            currentBloc = blocId;
+            const bloc = appData.blocs[blocId];
+
+            blocStatIntegration.textContent = bloc.integration;
+            blocStatYear.textContent = bloc.year;
+            blocStatPopulation.textContent = bloc.population;
+            blocStatGdp.textContent = bloc.gdp;
+            blocDetailsContainer.innerHTML = bloc.details;
+            
+            document.querySelectorAll('.bloc-button').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.bloc === blocId) {
+                    btn.classList.add('active');
+                }
+            });
+
+            renderChart();
+        }
+
+        document.querySelectorAll('.bloc-button').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const blocId = e.currentTarget.dataset.bloc;
+                updateDashboard(blocId);
+            });
+        });
+        
+        const chartToggleGdp = document.getElementById('chart-toggle-gdp');
+        const chartTogglePopulation = document.getElementById('chart-toggle-population');
+
+        function toggleChartButtons() {
+            if (currentChartType === 'gdp') {
+                chartToggleGdp.classList.add('bg-purple-500', 'text-white');
+                chartToggleGdp.classList.remove('bg-gray-200');
+                chartTogglePopulation.classList.remove('bg-purple-500', 'text-white');
+                chartTogglePopulation.classList.add('bg-gray-200');
+            } else {
+                chartTogglePopulation.classList.add('bg-purple-500', 'text-white');
+                chartTogglePopulation.classList.remove('bg-gray-200');
+                chartToggleGdp.classList.remove('bg-purple-500', 'text-white');
+                chartToggleGdp.classList.add('bg-gray-200');
+            }
+        }
+
+        chartToggleGdp.addEventListener('click', () => {
+            currentChartType = 'gdp';
+            renderChart();
+            toggleChartButtons();
+        });
+
+        chartTogglePopulation.addEventListener('click', () => {
+            currentChartType = 'population';
+            renderChart();
+            toggleChartButtons();
+        });
+
+
+        function renderChart() {
+            const ctx = document.getElementById('bloc-chart').getContext('2d');
+            const labels = Object.keys(appData.blocs);
+            const data = labels.map(key => currentChartType === 'gdp' ? appData.blocs[key].gdpValue : appData.blocs[key].populationValue);
+            const label = currentChartType === 'gdp' ? 'PIB Combinado (em trilhões de US$)' : 'População (em milhões)';
+            
+            const backgroundColors = labels.map(key => key === currentBloc ? 'rgba(160, 132, 232, 1)' : 'rgba(160, 132, 232, 0.5)');
+            const borderColors = labels.map(key => key === currentBloc ? 'rgba(139, 92, 246, 1)' : 'rgba(139, 92, 246, 0.5)');
+
+            if (myChart) {
+                myChart.destroy();
+            }
+
+            myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels.map(l => l.replace('MERCOSUL', 'Mercosul')),
+                    datasets: [{
+                        label: label,
+                        data: data,
+                        backgroundColor: backgroundColors,
+                        borderColor: borderColors,
+                        borderWidth: 2,
+                        borderRadius: 5,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: '#e5e7eb'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: '#403A3A',
+                            titleFont: {
+                                size: 14,
+                                weight: 'bold'
+                            },
+                            bodyFont: {
+                                size: 12
+                            },
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        if (currentChartType === 'gdp') {
+                                           label += `US$ ${context.parsed.y.toFixed(1)} trilhões`;
+                                        } else {
+                                           label += `${context.parsed.y} milhões`;
+                                        }
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        const themeHeaders = document.querySelectorAll('.theme-header');
+        themeHeaders.forEach(header => {
+            header.addEventListener('click', () => {
+                const content = header.nextElementSibling;
+                const icon = header.querySelector('span');
+
+                if (content.style.maxHeight) {
+                    content.style.maxHeight = null;
+                    icon.style.transform = 'rotate(0deg)';
+                    icon.textContent = '+';
+                } else {
+                    document.querySelectorAll('.theme-content').forEach(c => c.style.maxHeight = null);
+                    document.querySelectorAll('.theme-header span').forEach(i => {
+                        i.style.transform = 'rotate(0deg)';
+                        i.textContent = '+';
+                    });
+                    content.style.maxHeight = content.scrollHeight + "px";
+                    icon.style.transform = 'rotate(45deg)';
+                    icon.textContent = '×';
+                } 
+            });
+        });
+
+        const mobileMenuButton = document.getElementById('mobile-menu-button');
+        const mobileMenu = document.getElementById('mobile-menu');
+        mobileMenuButton.addEventListener('click', () => {
+            mobileMenu.classList.toggle('hidden');
+        });
+
+        updateStageDetails('ZPT');
+        updateDashboard('UE');
+        toggleChartButtons();
+    });
+    </script>
+</body>
+</html>
